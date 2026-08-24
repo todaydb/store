@@ -25,7 +25,7 @@ def fetch_aliexpress_products():
     timestamp = str(int(time.time() * 1000))
     
     # এখানে আমরা ট্রেন্ডিং বা হট প্রোডাক্ট এপিআই মেথড ব্যবহার করছি, 
-    # যাতে নির্দিষ্ট কোনো কিওয়ার্ড ছাড়াই সেরা প্রোডাক্টগুলো সিরিয়ালি চলে আসে।
+    # যাতে নির্দিষ্ট কোনো কিওয়ার্ড ছাড়াই সেরা প্রোডাক্টগুলো সিরিয়ালি চলে আসে।
     params = {
         'app_key': APP_KEY,
         'timestamp': timestamp,
@@ -34,7 +34,7 @@ def fetch_aliexpress_products():
         'format': 'json',
         'v': '2.0',
         'page_no': '1',
-        'page_size': '20' # আপনি একসাথে কয়টি প্রোডাক্ট আনতে চান (যেমন ২০টি)
+        'page_size': '20' # আপনি একসাথে কয়টি প্রোডাক্ট আনতে চান (যেমন ২০টি)
     }
     
     # সিগনেচার জেনারেট করা
@@ -43,6 +43,9 @@ def fetch_aliexpress_products():
     try:
         response = requests.get(url, params=params)
         data = response.json()
+        
+        # এপিআই থেকে আসা সম্পূর্ণ রেসপন্সটি লগে প্রিন্ট করে দেখার জন্য (ডিবাগিং)
+        print("API Full Response:", json.dumps(data, indent=2))
         
         products = []
         
@@ -55,7 +58,7 @@ def fetch_aliexpress_products():
                 raw_products = result['result']['products']
                 
                 for item in raw_products:
-                    # এপিআই থেকে সরাসরি পাওয়া রিয়েল ডাটা ম্যাপিং
+                    # এপিআই থেকে সরাসরি পাওয়া রিয়েল ডাটা ম্যাপিং
                     title = item.get("product_title")
                     price = item.get("target_sale_price") or item.get("sale_price") or "0.00"
                     image = item.get("product_main_image_url")
