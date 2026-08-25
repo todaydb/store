@@ -15,7 +15,7 @@ def generate_sign(params, secret):
     return hashlib.md5(query.encode("utf-8")).hexdigest().upper()
 
 def parse_product_item(item):
-    """এপিআই থেকে আসা পণ্যগুলোর ডেটা গুছিয়ে স্ট্যান্ডার্ড ফরম্যাট তৈরি করা (কী-নেমস অপরিবর্তিত রাখা হয়েছে)"""
+    """এপিআই থেকে আসা পণ্যগুলোর ডেটা গুছিয়ে স্ট্যান্ডার্ড ফরম্যাট তৈরি করা (কী-নেমস অপরিবর্তিত রাখা হয়েছে)"""
     return {
         "product_id": item.get("product_id"),
         "title": item.get("product_title", ""),
@@ -144,9 +144,8 @@ def fetch_aliexpress_data():
 
                         p_data = parse_product_item(item)
                         
-                        # প্রোডাক্টের নিজস্ব আসল ক্যাটেগরি নাম রাখা হয়েছে। 
-                        # জোর করে কিওয়ার্ড দিয়ে ওভাররাইড করা হয়নি, যাতে আসল ক্যাটেগরি লেবেলে বসে।
-                        # যদি এপিআই থেকে ক্যাটেগরি না আসে, তবেই কেবল ফলব্যাক হিসেবে কিওয়ার্ড বসবে।
+                        p_data["search_keyword"] = keyword
+
                         if not p_data["second_category_name"]:
                             p_data["second_category_name"] = keyword
                         if not p_data["first_category_name"]:
