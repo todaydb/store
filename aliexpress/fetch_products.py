@@ -2,6 +2,7 @@ import os
 import json
 import hashlib
 import time
+import random
 import requests
 
 # GitHub Secrets থেকে API Credentials নেওয়া হচ্ছে
@@ -15,7 +16,7 @@ def generate_sign(params, secret):
     return hashlib.md5(query.encode("utf-8")).hexdigest().upper()
 
 def parse_product_item(item):
-    """এপিআই থেকে আসা পণ্যগুলোর ডেটা গুছিয়ে স্ট্যান্ডার্ড ফরম্যাট তৈরি করা (কী-নেমস অপরিবর্তিত রাখা হয়েছে)"""
+    """এপিআই থেকে আসা পণ্যগুলোর ডেটা গুছিয়ে স্ট্যান্ডার্ড ফরম্যাট তৈরি করা"""
     return {
         "product_id": item.get("product_id"),
         "title": item.get("product_title", ""),
@@ -61,6 +62,9 @@ def fetch_aliexpress_data():
     print("Fetching hot/trending products for homepage...")
     timestamp = str(int(time.time() * 1000))
     
+    # হট প্রোডাক্টের জন্য পেজ রেঞ্জ বাড়িয়ে ১ থেকে ১০ এর মধ্যে র‍্যান্ডম করা হলো
+    random_hot_page = str(random.randint(1, 10))
+    
     hot_params = {
         'app_key': APP_KEY,
         'timestamp': timestamp,
@@ -68,8 +72,8 @@ def fetch_aliexpress_data():
         'method': 'aliexpress.affiliate.hotproduct.query',
         'format': 'json',
         'v': '2.0',
-        'page_no': '1',
-        'page_size': '20'
+        'page_no': random_hot_page,
+        'page_size': '30'
     }
     hot_params['sign'] = generate_sign(hot_params, APP_SECRET)
     
@@ -94,7 +98,7 @@ def fetch_aliexpress_data():
         if hot_products:
             with open("aliexpress/products.json", "w", encoding="utf-8") as f:
                 json.dump(hot_products, f, ensure_ascii=False, indent=4)
-            print(f"Successfully saved {len(hot_products)} products to products.json")
+            print(f"Successfully saved {len(hot_products)} products to products.json (Page: {random_hot_page})")
     except Exception as e:
         print(f"Error fetching hot products: {e}")
 
@@ -104,12 +108,36 @@ def fetch_aliexpress_data():
     # 2. Fetching Category Products (products_category.json)
     # ==========================================
     print("Fetching category-based products for category pages...")
-    search_keywords = ["Fashion", "Electronics", "Gadgets", "Lifestyle", "Food", "Beauty", "Sports", "Accessories", "Offers", "Deals"]
+    
+    # আপনার মেনুবারের নির্দিষ্ট ক্যাটাগরি কিওয়ার্ডগুলো
+    menu_keywords = ["Fashion", "Electronics", "Gadgets", "Lifestyle", "Food", "Beauty", "Sports", "Accessories", "Offers", "Deals"]
+    
+    # অতিরিক্ত ট্রেন্ডিং ও সার্চ কিওয়ার্ডের বিশাল লিস্ট (যাতে কোড বারবার এডিট করতে না হয়)
+    extra_trending_keywords = [
+        "Smart Watch", "Wireless Earbuds", "Phone Case", "LED Lights", "Mini Fan",
+        "Kitchen Gadgets", "Makeup Brushes", "Men Wallet", "Backpack", "Sunglasses",
+        "Home Decor", "Fitness Band", "Bluetooth Speaker", "Car Accessories", "Toys",
+        "Shoes", "Necklace", "Ring", "Hair Dryer", "Nail Art", "Portable Charger",
+        "Gaming Mouse", "Mechanical Keyboard", "Laptop Stand", "Water Bottle",
+        "Yoga Mat", "Resistance Bands", "Smart Bulb", "Security Camera", "Pet Toys",
+        "Running Shoes", "Mens Jacket", "Womens Dress", "Crossbody Bag", "Smart Ring",
+        "Tablet Stand", "Car Phone Holder", "Desk Lamp", "Mini Projector", "Air Purifier"
+    ]
+
+    # সব কিওয়ার্ড একসাথে করে অটোমেটিক শাফেল করা হবে
+    all_keywords = list(set(menu_keywords + extra_trending_keywords))
+    
+    # প্রতিবার রান করার সময় এখান থেকে র‍্যান্ডমলি ১৫ থেকে ২৫টি কিওয়ার্ড অটো পিক করবে
+    selected_keywords = random.sample(all_keywords, min(22, len(all_keywords)))
+
     category_products = []
     seen_ids = set()
 
-    for keyword in search_keywords:
+    for keyword in selected_keywords:
+        # পেজ নম্বর সম্পূর্ণ র‍্যান্ডম করা হলো (১ থেকে ২০ এর মধ্যে যেকোনো পেজ থেকে ডেটা আনবে)
+        random_page = str(random.randint(1, 20))
         timestamp = str(int(time.time() * 1000))
+        
         cat_params = {
             'app_key': APP_KEY,
             'timestamp': timestamp,
@@ -118,8 +146,8 @@ def fetch_aliexpress_data():
             'format': 'json',
             'v': '2.0',
             'keywords': keyword,
-            'page_no': '1',
-            'page_size': '15',
+            'page_no': random_page,
+            'page_size': '25',
             'target_currency': 'USD'
         }
         cat_params['sign'] = generate_sign(cat_params, APP_SECRET)
@@ -143,9 +171,9 @@ def fetch_aliexpress_data():
                         seen_ids.add(prod_id)
 
                         p_data = parse_product_item(item)
-                        
                         p_data["search_keyword"] = keyword
 
+                        # ডিফল্ট নাম বাদ দিয়ে এপিআই থেকে আসা ক্যাটাগরি বা কিওয়ার্ড ব্যবহার করা হয়েছে
                         if not p_data["second_category_name"]:
                             p_data["second_category_name"] = keyword
                         if not p_data["first_category_name"]:
@@ -161,7 +189,7 @@ def fetch_aliexpress_data():
     if category_products:
         with open("aliexpress/products_category.json", "w", encoding="utf-8") as f:
             json.dump(category_products, f, ensure_ascii=False, indent=4)
-        print(f"Successfully saved {len(category_products)} products to products_category.json")
+        print(f"Successfully saved {len(category_products)} unique products to products_category.json")
 
 if __name__ == "__main__":
     fetch_aliexpress_data()
