@@ -40,5 +40,5 @@ jobs:
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "bot@github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git add aliexpress/products.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update aliexpress products.json automatically" && git push)
+          git add aliexpress/products.json aliexpress/products_category.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update all aliexpress product json files automatically" && git push)
