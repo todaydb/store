@@ -24,8 +24,6 @@ def fetch_aliexpress_products():
     url = "https://api-sg.aliexpress.com/sync"
     timestamp = str(int(time.time() * 1000))
     
-    # এখানে আমরা ট্রেন্ডিং বা হট প্রোডাক্ট এপিআই মেথড ব্যবহার করছি, 
-    # যাতে নির্দিষ্ট কোনো কিওয়ার্ড ছাড়াই সেরা প্রোডাক্টগুলো সিরিয়ালি চলে আসে।
     params = {
         'app_key': APP_KEY,
         'timestamp': timestamp,
@@ -34,7 +32,7 @@ def fetch_aliexpress_products():
         'format': 'json',
         'v': '2.0',
         'page_no': '1',
-        'page_size': '20' # আপনি একসাথে কয়টি প্রোডাক্ট আনতে চান (যেমন ২০টি)
+        'page_size': '20'
     }
     
     # সিগনেচার জেনারেট করা
@@ -44,21 +42,24 @@ def fetch_aliexpress_products():
         response = requests.get(url, params=params)
         data = response.json()
         
-        # এপিআই থেকে আসা সম্পূর্ণ রেসপন্সটি লগে প্রিন্ট করে দেখার জন্য (ডিবাগিং)
+        # এপিআই থেকে আসা সম্পূর্ণ রেসপন্সটি লগে প্রিন্ট করা
         print("API Full Response:", json.dumps(data, indent=2))
         
         products = []
-        
-        # AliExpress Hot Product API রেসপন্স স্ট্রাকচার পার্স করা
         response_key = 'aliexpress_affiliate_hotproduct_query_response'
         
         if response_key in data and 'resp_result' in data[response_key]:
-            result = data[response_key]['resp_result']
-            if 'result' in result and 'products' in result['result']:
-                raw_products = result['result']['products']
-                
+            resp_result = data[response_key]['resp_result']
+            
+            # আলিবাবা এপিআই রেসপন্সের বিভিন্ন স্ট্রাকচার হ্যান্ডেল করার নিরাপদ উপায়
+            raw_products = []
+            if 'result' in resp_result and 'products' in resp_result['result']:
+                raw_products = resp_result['result']['products']
+                if isinstance(raw_products, dict) and 'product' in raw_products:
+                    raw_products = raw_products['product']
+            
+            if isinstance(raw_products, list):
                 for item in raw_products:
-                    # এপিআই থেকে সরাসরি পাওয়া রিয়েল ডাটা ম্যাপিং
                     title = item.get("product_title")
                     price = item.get("target_sale_price") or item.get("sale_price") or "0.00"
                     image = item.get("product_main_image_url")
@@ -72,7 +73,6 @@ def fetch_aliexpress_products():
                             "affiliate_link": affiliate_link
                         })
         
-        # যদি কোনো কারণে এপিআই রেসপন্স ফাকা থাকে
         if not products:
             print("Warning: No products retrieved from API or check API permission status.")
             return
@@ -80,7 +80,7 @@ def fetch_aliexpress_products():
         # ফোল্ডার নিশ্চিত করা
         os.makedirs("aliexpress", exist_ok=True)
 
-        # ডাইনামিক প্রোডাক্টগুলো products.json ফাইলে সেভ করা হচ্ছে
+        # products.json ফাইলে সেভ করা
         with open("aliexpress/products.json", "w", encoding="utf-8") as f:
             json.dump(products, f, ensure_ascii=False, indent=4)
             
