@@ -62,7 +62,6 @@ def fetch_aliexpress_data():
     print("Fetching hot/trending products for homepage...")
     timestamp = str(int(time.time() * 1000))
     
-    # হট প্রোডাক্টের জন্য পেজ রেঞ্জ বাড়িয়ে ১ থেকে ১০ এর মধ্যে র‍্যান্ডম করা হলো
     random_hot_page = str(random.randint(1, 10))
     
     hot_params = {
@@ -109,32 +108,14 @@ def fetch_aliexpress_data():
     # ==========================================
     print("Fetching category-based products for category pages...")
     
-    # আপনার মেনুবারের নির্দিষ্ট ক্যাটাগরি কিওয়ার্ডগুলো
+    # আপনার সাইটের মূল মেনুবারের ক্যাটাগরিগুলো
     menu_keywords = ["Fashion", "Electronics", "Gadgets", "Lifestyle", "Food", "Beauty", "Sports", "Accessories", "Offers", "Deals"]
-    
-    # অতিরিক্ত ট্রেন্ডিং ও সার্চ কিওয়ার্ডের বিশাল লিস্ট (যাতে কোড বারবার এডিট করতে না হয়)
-    extra_trending_keywords = [
-        "Smart Watch", "Wireless Earbuds", "Phone Case", "LED Lights", "Mini Fan",
-        "Kitchen Gadgets", "Makeup Brushes", "Men Wallet", "Backpack", "Sunglasses",
-        "Home Decor", "Fitness Band", "Bluetooth Speaker", "Car Accessories", "Toys",
-        "Shoes", "Necklace", "Ring", "Hair Dryer", "Nail Art", "Portable Charger",
-        "Gaming Mouse", "Mechanical Keyboard", "Laptop Stand", "Water Bottle",
-        "Yoga Mat", "Resistance Bands", "Smart Bulb", "Security Camera", "Pet Toys",
-        "Running Shoes", "Mens Jacket", "Womens Dress", "Crossbody Bag", "Smart Ring",
-        "Tablet Stand", "Car Phone Holder", "Desk Lamp", "Mini Projector", "Air Purifier"
-    ]
-
-    # সব কিওয়ার্ড একসাথে করে অটোমেটিক শাফেল করা হবে
-    all_keywords = list(set(menu_keywords + extra_trending_keywords))
-    
-    # প্রতিবার রান করার সময় এখান থেকে র‍্যান্ডমলি ১৫ থেকে ২৫টি কিওয়ার্ড অটো পিক করবে
-    selected_keywords = random.sample(all_keywords, min(22, len(all_keywords)))
 
     category_products = []
     seen_ids = set()
 
-    for keyword in selected_keywords:
-        # পেজ নম্বর সম্পূর্ণ র‍্যান্ডম করা হলো (১ থেকে ২০ এর মধ্যে যেকোনো পেজ থেকে ডেটা আনবে)
+    for keyword in menu_keywords:
+        # প্রতিটি ক্যাটাগরির জন্য ১ থেকে ২০ এর মধ্যে র‍্যান্ডম পেজ থেকে নতুন প্রোডাক্ট আনা হবে
         random_page = str(random.randint(1, 20))
         timestamp = str(int(time.time() * 1000))
         
@@ -147,7 +128,7 @@ def fetch_aliexpress_data():
             'v': '2.0',
             'keywords': keyword,
             'page_no': random_page,
-            'page_size': '25',
+            'page_size': '30',
             'target_currency': 'USD'
         }
         cat_params['sign'] = generate_sign(cat_params, APP_SECRET)
@@ -171,9 +152,9 @@ def fetch_aliexpress_data():
                         seen_ids.add(prod_id)
 
                         p_data = parse_product_item(item)
+                        # মেনুবারের ক্যাটাগরি লেবেলটি search_keyword হিসেবে সেট করা হলো
                         p_data["search_keyword"] = keyword
 
-                        # ডিফল্ট নাম বাদ দিয়ে এপিআই থেকে আসা ক্যাটাগরি বা কিওয়ার্ড ব্যবহার করা হয়েছে
                         if not p_data["second_category_name"]:
                             p_data["second_category_name"] = keyword
                         if not p_data["first_category_name"]:
@@ -185,6 +166,9 @@ def fetch_aliexpress_data():
             print(f"Error fetching for keyword '{keyword}': {e}")
         
         time.sleep(1)
+
+    # প্রোডাক্টগুলো এলোমেলো (Shuffle) করে দেওয়া যাতে প্রতিবার সাইটে ভিন্ন সিরিয়ালে দেখায়
+    random.shuffle(category_products)
 
     if category_products:
         with open("aliexpress/products_category.json", "w", encoding="utf-8") as f:
