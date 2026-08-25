@@ -15,7 +15,7 @@ def generate_sign(params, secret):
     return hashlib.md5(query.encode("utf-8")).hexdigest().upper()
 
 def parse_product_item(item):
-    """এপিআই থেকে আসা পণ্যগুলোর ডেটা গুছিয়ে স্ট্যান্ডার্ড ফরম্যাট তৈরি করা"""
+    """এপিআই থেকে আসা পণ্যগুলোর ডেটা গুছিয়ে স্ট্যান্ডার্ড ফরম্যাট তৈরি করা (কী-নেমস অপরিবর্তিত রাখা হয়েছে)"""
     return {
         "product_id": item.get("product_id"),
         "title": item.get("product_title", ""),
@@ -104,7 +104,6 @@ def fetch_aliexpress_data():
     # 2. Fetching Category Products (products_category.json)
     # ==========================================
     print("Fetching category-based products for category pages...")
-    # আপনার ওয়েবসাইটের হেডার মেনুর সমস্ত ক্যাটেগরি এখানে যুক্ত করা হলো
     search_keywords = ["Fashion", "Electronics", "Gadgets", "Lifestyle", "Food", "Beauty", "Sports", "Accessories", "Offers", "Deals"]
     category_products = []
     seen_ids = set()
@@ -145,9 +144,13 @@ def fetch_aliexpress_data():
 
                         p_data = parse_product_item(item)
                         
-                        # ক্যাটেগরি নিশ্চিত করতে কিওয়ার্ডটি ক্যাটেগরি ফিল্ডে সেট করা হলো
-                        p_data["second_category_name"] = keyword
-                        p_data["first_category_name"] = keyword
+                        # প্রোডাক্টের নিজস্ব আসল ক্যাটেগরি নাম রাখা হয়েছে। 
+                        # জোর করে কিওয়ার্ড দিয়ে ওভাররাইড করা হয়নি, যাতে আসল ক্যাটেগরি লেবেলে বসে।
+                        # যদি এপিআই থেকে ক্যাটেগরি না আসে, তবেই কেবল ফলব্যাক হিসেবে কিওয়ার্ড বসবে।
+                        if not p_data["second_category_name"]:
+                            p_data["second_category_name"] = keyword
+                        if not p_data["first_category_name"]:
+                            p_data["first_category_name"] = keyword
 
                         if p_data["title"] and p_data["image"]:
                             category_products.append(p_data)
