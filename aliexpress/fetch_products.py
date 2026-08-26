@@ -57,86 +57,38 @@ def fetch_aliexpress_data():
     os.makedirs("aliexpress", exist_ok=True)
 
     # ==========================================
-    # 1. Fetching Hot Products for Homepage (products.json)
+    # 1. Fetching Hot Products (products.json)
     # ==========================================
     print("Fetching hot/trending products for homepage...")
-    timestamp = str(int(time.time() * 1000))
-    
-    random_hot_page = str(random.randint(1, 10))
-    
-    hot_params = {
-        'app_key': APP_KEY,
-        'timestamp': timestamp,
-        'sign_method': 'md5',
-        'method': 'aliexpress.affiliate.hotproduct.query',
-        'format': 'json',
-        'v': '2.0',
-        'page_no': random_hot_page,
-        'page_size': '30'
-    }
-    hot_params['sign'] = generate_sign(hot_params, APP_SECRET)
-    
-    try:
-        response = requests.get(url, params=hot_params)
-        data = response.json()
-        hot_products = []
-        response_key = 'aliexpress_affiliate_hotproduct_query_response'
-        
-        if response_key in data and 'resp_result' in data[response_key]:
-            resp_result = data[response_key]['resp_result']
-            raw_products = resp_result.get('result', {}).get('products', [])
-            if isinstance(raw_products, dict) and 'product' in raw_products:
-                raw_products = raw_products['product']
-            
-            if isinstance(raw_products, list):
-                for item in raw_products:
-                    p_data = parse_product_item(item)
-                    if p_data["title"] and p_data["image"]:
-                        hot_products.append(p_data)
-                        
-        if hot_products:
-            with open("aliexpress/products.json", "w", encoding="utf-8") as f:
-                json.dump(hot_products, f, ensure_ascii=False, indent=4)
-            print(f"Successfully saved {len(hot_products)} products to products.json (Page: {random_hot_page})")
-    except Exception as e:
-        print(f"Error fetching hot products: {e}")
+    existing_hot_products = []
+    if os.path.exists("aliexpress/products.json"):
+        try:
+            with open("aliexpress/products.json", "r", encoding="utf-8") as f:
+                existing_hot_products = json.load(f)
+        except:
+            existing_hot_products = []
 
-    time.sleep(1)
+    hot_seen_ids = set(p["product_id"] for p in existing_hot_products)
+    new_hot_products = []
 
-    # ==========================================
-    # 2. Fetching Category Products (products_category.json)
-    # ==========================================
-    print("Fetching category-based products for category pages...")
-    
-    # আপনার সাইটের মূল মেনুবারের ক্যাটাগরিগুলো
-    menu_keywords = ["Fashion", "Electronics", "Gadgets", "Lifestyle", "Food", "Beauty", "Sports", "Accessories", "Offers", "Deals"]
-
-    category_products = []
-    seen_ids = set()
-
-    for keyword in menu_keywords:
-        # প্রতিটি ক্যাটাগরির জন্য ১ থেকে ২০ এর মধ্যে র‍্যান্ডম পেজ থেকে নতুন প্রোডাক্ট আনা হবে
-        random_page = str(random.randint(1, 20))
-        timestamp = str(int(time.time() * 1000))
-        
-        cat_params = {
+    hot_pages = random.sample(range(1, 11), 2)
+    for page in hot_pages:
+        hot_params = {
             'app_key': APP_KEY,
-            'timestamp': timestamp,
+            'timestamp': str(int(time.time() * 1000)),
             'sign_method': 'md5',
-            'method': 'aliexpress.affiliate.product.query',
+            'method': 'aliexpress.affiliate.hotproduct.query',
             'format': 'json',
             'v': '2.0',
-            'keywords': keyword,
-            'page_no': random_page,
-            'page_size': '30',
-            'target_currency': 'USD'
+            'page_no': str(page),
+            'page_size': '30'
         }
-        cat_params['sign'] = generate_sign(cat_params, APP_SECRET)
+        hot_params['sign'] = generate_sign(hot_params, APP_SECRET)
         
         try:
-            response = requests.get(url, params=cat_params)
+            response = requests.get(url, params=hot_params)
             data = response.json()
-            response_key = 'aliexpress_affiliate_product_query_response'
+            response_key = 'aliexpress_affiliate_hotproduct_query_response'
             
             if response_key in data and 'resp_result' in data[response_key]:
                 resp_result = data[response_key]['resp_result']
@@ -147,33 +99,132 @@ def fetch_aliexpress_data():
                 if isinstance(raw_products, list):
                     for item in raw_products:
                         prod_id = item.get("product_id")
-                        if prod_id in seen_ids:
+                        if prod_id in hot_seen_ids:
                             continue
-                        seen_ids.add(prod_id)
+                        hot_seen_ids.add(prod_id)
 
                         p_data = parse_product_item(item)
-                        # মেনুবারের ক্যাটাগরি লেবেলটি search_keyword হিসেবে সেট করা হলো
-                        p_data["search_keyword"] = keyword
-
-                        if not p_data["second_category_name"]:
-                            p_data["second_category_name"] = keyword
-                        if not p_data["first_category_name"]:
-                            p_data["first_category_name"] = keyword
-
                         if p_data["title"] and p_data["image"]:
-                            category_products.append(p_data)
+                            new_hot_products.append(p_data)
         except Exception as e:
-            print(f"Error fetching for keyword '{keyword}': {e}")
+            print(f"Error fetching hot products page {page}: {e}")
         
-        time.sleep(1)
+        time.sleep(0.5)
 
-    # প্রোডাক্টগুলো এলোমেলো (Shuffle) করে দেওয়া যাতে প্রতিবার সাইটে ভিন্ন সিরিয়ালে দেখায়
-    random.shuffle(category_products)
+    all_hot_products = new_hot_products + existing_hot_products
+    all_hot_products = all_hot_products[:2000]
 
-    if category_products:
+    if all_hot_products:
+        random.shuffle(all_hot_products)
+        with open("aliexpress/products.json", "w", encoding="utf-8") as f:
+            json.dump(all_hot_products, f, ensure_ascii=False, indent=4)
+        print(f"Successfully saved {len(all_hot_products)} products to products.json")
+
+    time.sleep(1)
+
+    # ==========================================
+    # 2. Fetching Category Products (products_category.json)
+    # ==========================================
+    print("Fetching category-based products...")
+    existing_category_products = []
+    if os.path.exists("aliexpress/products_category.json"):
+        try:
+            with open("aliexpress/products_category.json", "r", encoding="utf-8") as f:
+                existing_category_products = json.load(f)
+        except:
+            existing_category_products = []
+
+    seen_ids = set(p["product_id"] for p in existing_category_products)
+    new_category_products = []
+
+    menu_keywords = ["Fashion", "Electronics", "Gadgets", "Lifestyle", "Food", "Beauty", "Sports", "Accessories", "Offers", "Deals"]
+
+    for keyword in menu_keywords:
+        random_pages = random.sample(range(1, 21), 2)
+
+        for page in random_pages:
+            timestamp = str(int(time.time() * 1000))
+            
+            cat_params = {
+                'app_key': APP_KEY,
+                'timestamp': timestamp,
+                'sign_method': 'md5',
+                'method': 'aliexpress.affiliate.product.query',
+                'format': 'json',
+                'v': '2.0',
+                'keywords': keyword,
+                'page_no': str(page),
+                'page_size': '30',
+                'target_currency': 'USD'
+            }
+            cat_params['sign'] = generate_sign(cat_params, APP_SECRET)
+            
+            try:
+                response = requests.get(url, params=cat_params)
+                data = response.json()
+                response_key = 'aliexpress_affiliate_product_query_response'
+                
+                if response_key in data and 'resp_result' in data[response_key]:
+                    resp_result = data[response_key]['resp_result']
+                    raw_products = resp_result.get('result', {}).get('products', [])
+                    if isinstance(raw_products, dict) and 'product' in raw_products:
+                        raw_products = raw_products['product']
+                    
+                    if isinstance(raw_products, list):
+                        for item in raw_products:
+                            prod_id = item.get("product_id")
+                            if prod_id in seen_ids:
+                                continue
+                            seen_ids.add(prod_id)
+
+                            p_data = parse_product_item(item)
+                            p_data["search_keyword"] = keyword
+
+                            if not p_data["second_category_name"]:
+                                p_data["second_category_name"] = keyword
+                            if not p_data["first_category_name"]:
+                                p_data["first_category_name"] = keyword
+
+                            if p_data["title"] and p_data["image"]:
+                                new_category_products.append(p_data)
+            except Exception as e:
+                print(f"Error fetching for keyword '{keyword}' on page {page}: {e}")
+            
+            time.sleep(0.5)
+
+    all_category_products = new_category_products + existing_category_products
+    all_category_products = all_category_products[:5000]
+
+    if all_category_products:
+        random.shuffle(all_category_products)
         with open("aliexpress/products_category.json", "w", encoding="utf-8") as f:
-            json.dump(category_products, f, ensure_ascii=False, indent=4)
-        print(f"Successfully saved {len(category_products)} unique products to products_category.json")
+            json.dump(all_category_products, f, ensure_ascii=False, indent=4)
+        print(f"Successfully saved {len(all_category_products)} products to products_category.json")
+
+    # ==========================================
+    # 3. Generating Master Search Database (products_store.json)
+    # ==========================================
+    print("Generating master store database (products_store.json)...")
+    # হট প্রোডাক্ট এবং ক্যাটাগরি প্রোডাক্ট একসাথে মার্জ করে মাস্টার সার্চ ডেটাবেস তৈরি করা হলো
+    master_store = all_hot_products + all_category_products
+    
+    # আইডি দিয়ে ইউনিক ফিল্টার করে নেওয়া যাতে কোনো ডুপ্লিকেট না থাকে
+    unique_master_store = []
+    master_seen = set()
+    for p in master_store:
+        pid = p.get("product_id")
+        if pid not in master_seen:
+            master_seen.add(pid)
+            unique_master_store.append(p)
+
+    # সর্বোচ্চ ৫০০০ লিমিট বজায় রাখা
+    unique_master_store = unique_master_store[:5000]
+
+    if unique_master_store:
+        random.shuffle(unique_master_store)
+        with open("aliexpress/products_store.json", "w", encoding="utf-8") as f:
+            json.dump(unique_master_store, f, ensure_ascii=False, indent=4)
+        print(f"Successfully generated products_store.json with {len(unique_master_store)} unique products.")
 
 if __name__ == "__main__":
     fetch_aliexpress_data()
