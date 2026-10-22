@@ -111,11 +111,11 @@ def fetch_aliexpress_data():
         
         time.sleep(0.5)
 
+    # নতুন পণ্যগুলো আগে থাকবে, এরপর পুরানো পণ্যগুলো সিরিয়ালি থাকবে (কোনো shuffle নেই)
     all_hot_products = new_hot_products + existing_hot_products
     all_hot_products = all_hot_products[:2000]
 
     if all_hot_products:
-        random.shuffle(all_hot_products)
         with open("aliexpress/products.json", "w", encoding="utf-8") as f:
             json.dump(all_hot_products, f, ensure_ascii=False, indent=4)
         print(f"Successfully saved {len(all_hot_products)} products to products.json")
@@ -196,7 +196,6 @@ def fetch_aliexpress_data():
     all_category_products = all_category_products[:5000]
 
     if all_category_products:
-        random.shuffle(all_category_products)
         with open("aliexpress/products_category.json", "w", encoding="utf-8") as f:
             json.dump(all_category_products, f, ensure_ascii=False, indent=4)
         print(f"Successfully saved {len(all_category_products)} products to products_category.json")
@@ -205,10 +204,8 @@ def fetch_aliexpress_data():
     # 3. Generating Master Search Database (products_store.json)
     # ==========================================
     print("Generating master store database (products_store.json)...")
-    # হট প্রোডাক্ট এবং ক্যাটাগরি প্রোডাক্ট একসাথে মার্জ করে মাস্টার সার্চ ডেটাবেস তৈরি করা হলো
     master_store = all_hot_products + all_category_products
     
-    # আইডি দিয়ে ইউনিক ফিল্টার করে নেওয়া যাতে কোনো ডুপ্লিকেট না থাকে
     unique_master_store = []
     master_seen = set()
     for p in master_store:
@@ -217,11 +214,9 @@ def fetch_aliexpress_data():
             master_seen.add(pid)
             unique_master_store.append(p)
 
-    # সর্বোচ্চ ৫০০০ লিমিট বজায় রাখা
     unique_master_store = unique_master_store[:5000]
 
     if unique_master_store:
-        random.shuffle(unique_master_store)
         with open("aliexpress/products_store.json", "w", encoding="utf-8") as f:
             json.dump(unique_master_store, f, ensure_ascii=False, indent=4)
         print(f"Successfully generated products_store.json with {len(unique_master_store)} unique products.")
